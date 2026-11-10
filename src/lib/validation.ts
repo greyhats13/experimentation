@@ -62,14 +62,14 @@ function isTransactionCategory(value: unknown): value is TransactionCategory {
 }
 
 /**
- * Checks whether a string is a valid YYYY-MM-DD calendar date.
+ * Checks whether a string is a valid YYYY-MM-DD calendar date without month rollover.
  */
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== 'string' || !ISO_DATE_REGEX.test(value)) {
     return false
   }
-  const parsed = Date.parse(`${value}T00:00:00Z`)
-  return !Number.isNaN(parsed)
+  const parsed = new Date(`${value}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value)
 }
 
 /**
@@ -82,33 +82,28 @@ export function validateTransactionInput(
     return { ok: false, error: ['Payload must be a JSON object'] }
   }
 
-  const errors: string[] = []
   const rawTitle = typeof raw['title'] === 'string' ? sanitizeText(raw['title']) : ''
   const rawAmount = raw['amount']
   const rawType = raw['type']
   const rawCategory = raw['category']
   const rawDate = raw['date']
 
-  if (rawTitle.length === 0 || rawTitle.length > MAX_TEXT_LENGTH) {
-    errors.push(`Title must be between 1 and ${MAX_TEXT_LENGTH} characters`)
-  }
-  if (
+  const errors = [
+    rawTitle.length === 0 || rawTitle.length > MAX_TEXT_LENGTH
+      ? `Title must be between 1 and ${MAX_TEXT_LENGTH} characters`
+      : null,
     typeof rawAmount !== 'number' ||
     !Number.isFinite(rawAmount) ||
     rawAmount <= 0 ||
     rawAmount > MAX_AMOUNT
-  ) {
-    errors.push(`Amount must be a positive number up to ${MAX_AMOUNT}`)
-  }
-  if (!isTransactionType(rawType)) {
-    errors.push('Type must be either "income" or "expense"')
-  }
-  if (!isTransactionCategory(rawCategory)) {
-    errors.push('Category is not in the allowed category list')
-  }
-  if (!isValidIsoDate(rawDate)) {
-    errors.push('Date must be in YYYY-MM-DD format')
-  }
+      ? `Amount must be a positive number up to ${MAX_AMOUNT}`
+      : null,
+    !isTransactionType(rawType) ? 'Type must be either "income" or "expense"' : null,
+    !isTransactionCategory(rawCategory)
+      ? 'Category is not in the allowed category list'
+      : null,
+    !isValidIsoDate(rawDate) ? 'Date must be in YYYY-MM-DD format' : null,
+  ].filter((msg): msg is string => msg !== null)
 
   if (errors.length > 0) {
     return { ok: false, error: errors }
@@ -136,34 +131,29 @@ export function validateSavingsGoalInput(
     return { ok: false, error: ['Payload must be a JSON object'] }
   }
 
-  const errors: string[] = []
   const rawName = typeof raw['name'] === 'string' ? sanitizeText(raw['name']) : ''
   const rawTarget = raw['targetAmount']
   const rawCurrent = raw['currentAmount']
   const rawDate = raw['targetDate']
 
-  if (rawName.length === 0 || rawName.length > MAX_TEXT_LENGTH) {
-    errors.push(`Goal name must be between 1 and ${MAX_TEXT_LENGTH} characters`)
-  }
-  if (
+  const errors = [
+    rawName.length === 0 || rawName.length > MAX_TEXT_LENGTH
+      ? `Goal name must be between 1 and ${MAX_TEXT_LENGTH} characters`
+      : null,
     typeof rawTarget !== 'number' ||
     !Number.isFinite(rawTarget) ||
     rawTarget <= 0 ||
     rawTarget > MAX_AMOUNT
-  ) {
-    errors.push('Target amount must be a positive number')
-  }
-  if (
+      ? 'Target amount must be a positive number'
+      : null,
     typeof rawCurrent !== 'number' ||
     !Number.isFinite(rawCurrent) ||
     rawCurrent < 0 ||
     rawCurrent > MAX_AMOUNT
-  ) {
-    errors.push('Current saved amount must be a non-negative number')
-  }
-  if (!isValidIsoDate(rawDate)) {
-    errors.push('Target date must be in YYYY-MM-DD format')
-  }
+      ? 'Current saved amount must be a non-negative number'
+      : null,
+    !isValidIsoDate(rawDate) ? 'Target date must be in YYYY-MM-DD format' : null,
+  ].filter((msg): msg is string => msg !== null)
 
   if (errors.length > 0) {
     return { ok: false, error: errors }

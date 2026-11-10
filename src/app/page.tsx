@@ -79,20 +79,24 @@ function useFinancialDashboard() {
    */
   async function handleAddTransaction(input: CreateTransactionInput) {
     setErrorBanner(null)
-    const res = await fetch('/api/transactions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify(input),
-    })
-    const result = await res.json()
-    if (!res.ok || !result.success) {
-      setErrorBanner(result.error ?? 'Failed to add transaction.')
-      return
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(input),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.success) {
+        setErrorBanner(result.error ?? 'Failed to add transaction.')
+        return
+      }
+      await loadDashboardData()
+    } catch {
+      setErrorBanner('Network error while adding transaction.')
     }
-    await loadDashboardData()
   }
 
   /**
@@ -100,17 +104,21 @@ function useFinancialDashboard() {
    */
   async function handleDeleteTransaction(id: string) {
     setErrorBanner(null)
-    const res = await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    })
-    const result = await res.json()
-    if (!res.ok || !result.success) {
-      setErrorBanner(result.error ?? 'Failed to remove transaction.')
-      return
+    try {
+      const res = await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+      const result = await res.json()
+      if (!res.ok || !result.success) {
+        setErrorBanner(result.error ?? 'Failed to remove transaction.')
+        return
+      }
+      setTransactions(result.data.transactions)
+      setSummary(result.data.summary)
+    } catch {
+      setErrorBanner('Network error while removing transaction.')
     }
-    setTransactions(result.data.transactions)
-    setSummary(result.data.summary)
   }
 
   /**
@@ -118,20 +126,24 @@ function useFinancialDashboard() {
    */
   async function handleAddGoal(input: CreateSavingsGoalInput) {
     setErrorBanner(null)
-    const res = await fetch('/api/goals', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: JSON.stringify(input),
-    })
-    const result = await res.json()
-    if (!res.ok || !result.success) {
-      setErrorBanner(result.error ?? 'Failed to create savings goal.')
-      return
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify(input),
+      })
+      const result = await res.json()
+      if (!res.ok || !result.success) {
+        setErrorBanner(result.error ?? 'Failed to create savings goal.')
+        return
+      }
+      setGoals(result.data.goals)
+    } catch {
+      setErrorBanner('Network error while creating savings goal.')
     }
-    setGoals(result.data.goals)
   }
 
   return {
