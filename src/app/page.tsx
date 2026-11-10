@@ -15,9 +15,31 @@ import type {
 } from '@/lib/types'
 
 /**
- * Main Financial Planning Dashboard page component.
+ * Renders the top navigation and header banner for the financial dashboard.
  */
-export default function FinancialDashboardPage() {
+function DashboardHeader() {
+  return (
+    <header className="mb-8 flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
+      <div>
+        <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">
+          50/30/20 Personal Finance Engine
+        </span>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+          FinPlan Cashflow & Goal Planner
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Track monthly cashflow, optimize 50/30/20 budget allocations, and forecast
+          savings goals.
+        </p>
+      </div>
+    </header>
+  )
+}
+
+/**
+ * Custom hook encapsulating dashboard data fetching and mutation handlers.
+ */
+function useFinancialDashboard() {
   const [transactions, setTransactions] = useState<readonly Transaction[]>([])
   const [summary, setSummary] = useState<FinancialSummary>(() =>
     calculateFinancialSummary([])
@@ -26,9 +48,6 @@ export default function FinancialDashboardPage() {
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  /**
-   * Loads initial transactions, financial summary, and savings goals from the BFF API.
-   */
   const loadDashboardData = useCallback(async () => {
     try {
       const [txRes, goalsRes] = await Promise.all([
@@ -37,7 +56,6 @@ export default function FinancialDashboardPage() {
       ])
       const txJson = await txRes.json()
       const goalsJson = await goalsRes.json()
-
       if (txJson.success && txJson.data) {
         setTransactions(txJson.data.transactions)
         setSummary(txJson.data.summary)
@@ -57,11 +75,11 @@ export default function FinancialDashboardPage() {
   }, [loadDashboardData])
 
   /**
-   * Sends a POST request to create a new transaction and updates state immutably.
+   * Sends a POST request to create a new transaction and refreshes dashboard state.
    */
   async function handleAddTransaction(input: CreateTransactionInput) {
     setErrorBanner(null)
-    const response = await fetch('/api/transactions', {
+    const res = await fetch('/api/transactions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -69,8 +87,8 @@ export default function FinancialDashboardPage() {
       },
       body: JSON.stringify(input),
     })
-    const result = await response.json()
-    if (!response.ok || !result.success) {
+    const result = await res.json()
+    if (!res.ok || !result.success) {
       setErrorBanner(result.error ?? 'Failed to add transaction.')
       return
     }
@@ -78,21 +96,16 @@ export default function FinancialDashboardPage() {
   }
 
   /**
-   * Sends a DELETE request to remove a transaction and refreshes summary metrics.
+   * Sends a DELETE request to remove a transaction and updates state immutably.
    */
   async function handleDeleteTransaction(id: string) {
     setErrorBanner(null)
-    const response = await fetch(
-      `/api/transactions?id=${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      }
-    )
-    const result = await response.json()
-    if (!response.ok || !result.success) {
+    const res = await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    const result = await res.json()
+    if (!res.ok || !result.success) {
       setErrorBanner(result.error ?? 'Failed to remove transaction.')
       return
     }
@@ -105,7 +118,7 @@ export default function FinancialDashboardPage() {
    */
   async function handleAddGoal(input: CreateSavingsGoalInput) {
     setErrorBanner(null)
-    const response = await fetch('/api/goals', {
+    const res = await fetch('/api/goals', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -113,31 +126,44 @@ export default function FinancialDashboardPage() {
       },
       body: JSON.stringify(input),
     })
-    const result = await response.json()
-    if (!response.ok || !result.success) {
+    const result = await res.json()
+    if (!res.ok || !result.success) {
       setErrorBanner(result.error ?? 'Failed to create savings goal.')
       return
     }
     setGoals(result.data.goals)
   }
 
+  return {
+    transactions,
+    summary,
+    goals,
+    errorBanner,
+    loading,
+    handleAddTransaction,
+    handleDeleteTransaction,
+    handleAddGoal,
+  }
+}
+
+/**
+ * Main Financial Planning Dashboard page component.
+ */
+export default function FinancialDashboardPage() {
+  const {
+    transactions,
+    summary,
+    goals,
+    errorBanner,
+    loading,
+    handleAddTransaction,
+    handleDeleteTransaction,
+    handleAddGoal,
+  } = useFinancialDashboard()
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-8 flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center">
-        <div>
-          <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800">
-            50/30/20 Personal Finance Engine
-          </span>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
-            FinPlan Cashflow & Goal Planner
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Track monthly cashflow, optimize 50/30/20 budget allocations, and
-            forecast savings goals.
-          </p>
-        </div>
-      </header>
-
+      <DashboardHeader />
       {errorBanner !== null && (
         <div
           role="alert"
@@ -146,7 +172,6 @@ export default function FinancialDashboardPage() {
           {errorBanner}
         </div>
       )}
-
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
           Loading financial planner...
@@ -154,12 +179,10 @@ export default function FinancialDashboardPage() {
       ) : (
         <div className="space-y-8">
           <SummaryCards summary={summary} />
-
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <BudgetRulePanel breakdown={summary.budgetBreakdown} />
             <SavingsGoalSection goals={goals} onAddGoal={handleAddGoal} />
           </div>
-
           <TransactionSection
             transactions={transactions}
             onAddTransaction={handleAddTransaction}
