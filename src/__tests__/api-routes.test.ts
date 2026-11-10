@@ -129,5 +129,29 @@ describe('API Routes (/api/transactions & /api/goals)', () => {
     })
     const postRes = await postGoal(postReq)
     expect(postRes.status).toBe(201)
+
+    const badGoalReq = new NextRequest('http://localhost:3000/api/goals', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        name: '',
+        targetAmount: -10,
+        currentAmount: -5,
+        targetDate: 'invalid',
+      }),
+    })
+    const badGoalRes = await postGoal(badGoalReq)
+    expect(badGoalRes.status).toBe(400)
+
+    const noCsrfGoalReq = new NextRequest('http://localhost:3000/api/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    const noCsrfGoalRes = await postGoal(noCsrfGoalReq)
+    expect(noCsrfGoalRes.status).toBe(403)
   })
 })
